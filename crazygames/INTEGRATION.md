@@ -8,7 +8,7 @@ Source: https://docs.crazygames.com/
 ## SDK Setup
 
 Install the official CrazyGames Godot plugin:
-https://github.com/crazygames/godot-crazygames-sdk
+https://store.godotengine.org/asset/crazygames/crazysdk/
 
 Add a `CrazySDK` autoload wrapper that stubs all calls when the plugin is absent (local dev, Steam, mobile builds). This means integration code works across all platforms without ifdefs everywhere.
 
