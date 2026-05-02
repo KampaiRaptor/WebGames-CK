@@ -108,8 +108,9 @@ Player-initiated, in exchange for in-game benefit. Must have a non-ad alternativ
 
 ```gdscript
 var result = await CrazyGames.Ad.request_ad_async("rewarded")
-var granted = result == "finished"
+var granted = result is Dictionary and result.get("state", "") == "finished"
 # Only grant reward if granted == true
+# NOTE: request_ad_async returns a Dictionary, not a String — comparing result == "finished" always evaluates false
 ```
 
 Rules:
@@ -283,8 +284,55 @@ Conversion rate is most actionable: load fast + get to fun immediately. Keep ini
 
 ## ByteBrew Analytics
 
-CrazyGames recommends ByteBrew for analytics (mentioned in their requirements docs).
-Setup guide: https://docs.crazygames.com/requirements/quality/ (check for ByteBrew section)
-Godot SDK: search ByteBrew Godot on their site/GitHub.
+CrazyGames official analytics partner. Free — covers sessions, custom events, A/B testing, remote config.
+Docs: https://docs.crazygames.com/resources/partners/#bytebrew-analytics
+ByteBrew docs: https://docs.bytebrew.io/sdk/godot
 
-Integration should go into the same `CrazySDK` wrapper autoload, initialized in `_ready()` after CrazyGames SDK init.
+**For Godot web exports, use the JavaScript SDK** (not the Godot native plugin — that's mobile/desktop only).
+
+### SDK
+
+CDN: `https://unpkg.com/bytebrew-web-sdk@1.0.1/dist/ByteBrewSDK.js`
+
+Add to exported `index.html` `<head>` (Godot writes this file on export — patch it post-export or use a custom HTML shell):
+
+```html
+<script src="https://unpkg.com/bytebrew-web-sdk@1.0.1/dist/ByteBrewSDK.js"></script>
+```
+
+### Initialization
+
+Call from GDScript after SDK loads, e.g. at the end of `_ready()` in the CrazySDK autoload:
+
+```gdscript
+if OS.has_feature("web"):
+    JavaScriptBridge.eval("""
+        ByteBrew.initializeByteBrew('GAME_ID', 'SDK_KEY', '1.0.0');
+    """)
+```
+
+### Custom Events
+
+```gdscript
+func track(event_name: String, params: Dictionary = {}) -> void:
+    if not OS.has_feature("web"):
+        print("[ANALYTICS] ", event_name, " ", params)
+        return
+    var params_json = JSON.stringify(params)
+    JavaScriptBridge.eval("ByteBrew.newCustomEvent('%s', %s);" % [event_name, params_json])
+```
+
+Event name rules: no spaces, periods, or colons — use underscores.
+
+### Recommended events for progression tracking
+
+| Event | When | Key params |
+|-------|------|------------|
+| `level_started` | First shot fired | `level` (scene basename) |
+| `level_midpoint` | 50% timer elapsed | `level`, `score`, `active`, `passives` |
+| `level_complete` | Timer runs out | `level`, `score`, `active`, `passives` |
+| `player_died` | Game over | `level`, `score`, `time_survived`, `active`, `passives` |
+
+### CrazyGames data partner
+
+Invite `analytics@crazygames.com` in ByteBrew dashboard → Data Partners.
