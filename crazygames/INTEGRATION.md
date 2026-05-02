@@ -286,43 +286,74 @@ Conversion rate is most actionable: load fast + get to fun immediately. Keep ini
 
 CrazyGames official analytics partner. Free — covers sessions, custom events, A/B testing, remote config.
 Docs: https://docs.crazygames.com/resources/partners/#bytebrew-analytics
-ByteBrew docs: https://docs.bytebrew.io/sdk/godot
+ByteBrew docs: https://docs.bytebrew.io/sdk/javascript
 
 **For Godot web exports, use the JavaScript SDK** (not the Godot native plugin — that's mobile/desktop only).
 
-### SDK
+### SDK setup
 
-CDN: `https://unpkg.com/bytebrew-web-sdk@1.0.1/dist/ByteBrewSDK.js`
+Download from npm: `https://unpkg.com/bytebrew-web-sdk@1.0.1/dist/ByteBrewSDK.js`
 
-Add to exported `index.html` `<head>` (Godot writes this file on export — patch it post-export or use a custom HTML shell):
+**Do NOT use the CDN URL directly** — CrazyGames CSP blocks `unpkg.com`. Self-host the file.
+
+The downloaded SDK is a CommonJS module (`module.exports.ByteBrew`) — it does NOT set `window.ByteBrew`. Wrap it in an IIFE before use:
+
+```javascript
+(function(){
+  var module = {exports: {}};
+  var exports = module.exports;
+  // [paste SDK source here]
+  window.ByteBrew = module.exports.ByteBrew;
+})();
+```
+
+Save the wrapped file as `ByteBrewSDK.js` and serve it alongside the game. In `index.html` `<head>`:
 
 ```html
-<script src="https://unpkg.com/bytebrew-web-sdk@1.0.1/dist/ByteBrewSDK.js"></script>
+<script src="ByteBrewSDK.js"></script>
 ```
+
+For Godot exports: add this via `html/head_include` in the export preset, then use a post-export script to copy the wrapped `ByteBrewSDK.js` into the build directory.
 
 ### Initialization
 
-Call from GDScript after SDK loads, e.g. at the end of `_ready()` in the CrazySDK autoload:
+Create an `Analytics` autoload (`scripts/analytics.gd`):
 
 ```gdscript
-if OS.has_feature("web"):
-    JavaScriptBridge.eval("""
-        ByteBrew.initializeByteBrew('GAME_ID', 'SDK_KEY', '1.0.0');
-    """)
+extends Node
+
+const _GAME_ID = "YOUR_GAME_ID"
+const _SDK_KEY = "YOUR_SDK_KEY"
+const _VERSION = "1.0.0"
+
+func _ready() -> void:
+    if OS.has_feature("web"):
+        JavaScriptBridge.eval("ByteBrew.initializeByteBrew('%s', '%s', '%s');" % [_GAME_ID, _SDK_KEY, _VERSION])
+
+func track(event_name: String, params: Dictionary = {}) -> void:
+    var params_json = JSON.stringify(params)
+    print("[ANALYTICS] ", event_name, " ", params_json)
+    if OS.has_feature("web"):
+        JavaScriptBridge.eval("ByteBrew.newCustomEvent('%s', %s);" % [event_name, params_json])
 ```
 
 ### Custom Events
 
+Name rules: no spaces, periods, or colons — use underscores. **This applies to parameter values too** — spaces in values silently prevent events from being processed on the dashboard.
+
 ```gdscript
-func track(event_name: String, params: Dictionary = {}) -> void:
-    if not OS.has_feature("web"):
-        print("[ANALYTICS] ", event_name, " ", params)
-        return
-    var params_json = JSON.stringify(params)
-    JavaScriptBridge.eval("ByteBrew.newCustomEvent('%s', %s);" % [event_name, params_json])
+Analytics.track("level_started", {"level": "FirstLevel"})
+Analytics.track("player_died", {"level": "FirstLevel", "score": "12", "active": "Homing_Shot"})
 ```
 
-Event name rules: no spaces, periods, or colons — use underscores.
+### Where to see data
+
+ByteBrew is **real-time** — data appears within seconds of events firing.
+
+Custom events do NOT appear on the main analytics page. Go to:
+**Custom Workspace → Mechanics** (Custom Analytics is deprecated)
+
+Check **App Settings → Events Manager** if events aren't showing — they may have been disabled there.
 
 ### Recommended events for progression tracking
 
@@ -336,3 +367,17 @@ Event name rules: no spaces, periods, or colons — use underscores.
 ### CrazyGames data partner
 
 Invite `analytics@crazygames.com` in ByteBrew dashboard → Data Partners.
+
+### CrazyGames SDK timing issue
+
+`CrazyGamesBridge.get_game_settings()` crashes if called before the CrazyGames SDK finishes loading (it injects the SDK script tag dynamically). Fix: await `CrazyGames.is_initialised_async()` before calling it:
+
+```gdscript
+func _ready() -> void:
+    if not _has_sdk():
+        return
+    var cg = get_node_or_null("/root/CrazyGames")
+    if cg:
+        await cg.is_initialised_async()
+    var settings = _game().get_game_settings()
+```
