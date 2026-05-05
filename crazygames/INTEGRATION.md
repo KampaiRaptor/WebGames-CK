@@ -260,7 +260,7 @@ Conversion rate is most actionable: load fast + get to fun immediately. Keep ini
 - [ ] Initial download ≤ 50MB (≤ 20MB for mobile homepage eligibility)
 - [ ] Total files ≤ 1,500
 - [ ] Relative paths only (no absolute paths in exported HTML)
-- [ ] Brotli compression on `.wasm` + `.pck` (serve with `Content-Encoding: br`)
+- [ ] No manual compression needed — CrazyGames CDN compresses automatically. Raw ~43 MB serves as ~14-15 MB load size.
 - [ ] Sitelock: whitelist `*.crazygames.com` and regional TLDs if using CSP
 - [ ] Test on Chromebook-equivalent (4GB RAM, no discrete GPU)
 - [ ] Chrome + Edge functional; Safari recommended
@@ -340,6 +340,8 @@ func track(event_name: String, params: Dictionary = {}) -> void:
 ### Custom Events
 
 Name rules: no spaces, periods, or colons — use underscores. **This applies to parameter values too** — spaces in values silently prevent events from being processed on the dashboard.
+
+**🚨 Web SDK vs mobile SDK:** The web SDK only exposes `newCustomEvent(name, jsonObject)`. Methods like `newCustomEventWithJSONDictionary` exist only in the mobile SDK — calling them on web silently fails or throws a TypeError. Always use `newCustomEvent` for web builds.
 
 ```gdscript
 Analytics.track("level_started", {"level": "FirstLevel"})
