@@ -359,12 +359,27 @@ Check **App Settings → Events Manager** if events aren't showing — they may 
 
 ### Recommended events for progression tracking
 
-| Event | When | Key params |
-|-------|------|------------|
-| `level_started` | First shot fired | `level` (scene basename) |
-| `level_midpoint` | 50% timer elapsed | `level`, `score`, `active`, `passives` |
-| `level_complete` | Timer runs out | `level`, `score`, `active`, `passives` |
-| `player_died` | Game over | `level`, `score`, `time_survived`, `active`, `passives` |
+All events should include a common base params helper so every event carries the same context automatically:
+
+```gdscript
+func _analytics_params() -> Dictionary:
+    return {
+        "level": _level_id(),          # scene basename e.g. "FirstLevel"
+        "score": str(score),
+        "time_survived": str(int(elapsed)),
+        "active": active_ability_name,
+        "passives": ",".join(passive_names),
+        "play_time": str(int(GameState.total_play_time)),  # cumulative across retries
+    }
+```
+
+| Event | When | Extra params |
+|-------|------|-------------|
+| `level_started` | First player input / gameplay begins | `attempt` (retry count) |
+| `level_midpoint` | 50% of level timer elapsed | — |
+| `level_complete` | Level timer runs out | — |
+| `player_died` | Game over screen | `kill_cause` (enemy scene name or `own_bullet`) |
+| `ability_chosen` | Player picks upgrade | `ability` (ability label) |
 
 ### CrazyGames data partner
 

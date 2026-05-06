@@ -1,16 +1,35 @@
 # Godot MCP + Claude Code Notes
 
-Learnings from using Claude Code with the Godot MCP server in GodotPlayThing project.
+Learnings from using Claude Code with the Godot MCP server.
 
 ---
 
-## Setup
+## Setup (new project)
 
-The project uses two MCP-related plugins:
-- `addons/godot_mcp_editor/` — editor plugin (runs in Godot editor)
-- `addons/godot_mcp_runtime/` — runtime autoload (runs in-game)
+### 1. Install plugins
 
-Both are registered in `project.godot` as editor plugins and autoloads respectively.
+Download and copy into `addons/`:
+- `godot_mcp_editor` — editor plugin (enables MCP server in the editor)
+- `godot_mcp_runtime` — runtime plugin (enables in-game debug output)
+
+Enable both in **Project → Project Settings → Plugins**.
+
+### 2. Register runtime autoload
+
+In `project.godot`, add:
+```ini
+[autoload]
+MCPRuntime="*res://addons/godot_mcp_runtime/mcp_runtime_autoload.gd"
+```
+
+Or via **Project → Project Settings → Autoload**.
+
+### 3. Exclude from web export
+
+Add to your export preset `exclude_filter` so dev tools don't ship to players:
+```
+addons/godot_mcp_editor/*,addons/godot_mcp_runtime/*
+```
 
 The MCP server connects via `mcp__godot__*` tools exposed to Claude Code.
 
@@ -84,17 +103,6 @@ if OS.has_feature("web"):
     return
 ```
 Add a visible pause button to the HUD for web builds as replacement.
-
----
-
-## Project-Specific Autoloads
-
-| Name | Script | Purpose |
-|------|--------|---------|
-| `AudioManager` | `scripts/audio_manager.gd` | All sound playback + mute/unmute |
-| `GameState` | `scripts/game_state.gd` | Persist ability loadout between scenes |
-| `CameraShake` | `scripts/camera_shake.gd` | Screen shake controller |
-| `CrazySDK` | `scripts/crazy_sdk.gd` | CrazyGames SDK wrapper (stubs when plugin absent) |
 
 ---
 

@@ -122,7 +122,7 @@ with open("index.html", "w") as f:
 | index.js   | 309 KB | 66 KB | 79% |
 | **Total upload** | **~43 MB** | n/a | Upload uncompressed |
 
-Result: ✅ Under 50MB CrazyGames hard limit. ❌ Above 20MB mobile threshold.
+Result: ✅ Under 50MB CrazyGames hard limit. ✅ Under 20MB mobile threshold after CDN compression (~14.6 MB served).
 
 The `.pck` only compresses 14% because WAV audio and pre-compressed textures are already dense. If audio were converted to OGG Vorbis, `.pck` would compress further.
 
