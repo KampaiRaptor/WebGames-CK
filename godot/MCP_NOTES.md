@@ -96,6 +96,9 @@ Timers created with `create_timer(..., true, false, true)` run even when paused 
 ### Web audio (iOS)
 iOS suspends AudioContext on background. Must call `audioContext.resume()` within a user-triggered event. Godot's web export handles this in some versions — test on iOS before shipping.
 
+### Font symbols on web
+Special Unicode symbols from icon fonts (arrows, checkmarks, decorative glyphs, etc.) do not render correctly in Godot web exports — they appear as boxes or are dropped entirely. Before shipping, sweep the game and replace any such symbols with plain text or sprite-based alternatives.
+
 ### Escape key on web
 CrazyGames uses Escape to exit fullscreen. Guard all `ui_cancel` handlers:
 ```gdscript
