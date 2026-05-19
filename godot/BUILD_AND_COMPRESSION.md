@@ -96,7 +96,25 @@ Godot 4 supports only these placeholders in custom HTML shells:
 
 `$GODOT_SCRIPT_ELEMENT` is **NOT a valid placeholder** in Godot 4 — it will appear literally in the browser.
 
-**Recommended approach**: Post-process the exported HTML after export:
+Two approaches:
+
+### Option A: project.godot boot_splash (recommended)
+
+Bakes the image directly into the export. No post-processing needed.
+
+In `project.godot` under `[application]`:
+```ini
+boot_splash/bg_color=Color(0.008, 0.004, 0.042, 1)
+boot_splash/stretch_mode=0
+boot_splash/image="res://web/StudioLogo.png"
+```
+
+Place `StudioLogo.png` in `res://web/` and reimport in the editor. The splash is embedded in the pck — no extra file needed in the upload folder.
+
+### Option B: Post-process the exported HTML
+
+Use when you can't change project settings or need a different image per deployment.
+
 1. Export normally
 2. Patch the HTML file to replace the splash image src and background color
 3. Copy your custom logo file next to the HTML
