@@ -12,6 +12,76 @@ https://store.godotengine.org/asset/crazygames/crazysdk/
 
 Add a `CrazySDK` autoload wrapper that stubs all calls when the plugin is absent (local dev, Steam, mobile builds). This means integration code works across all platforms without ifdefs everywhere.
 
+```gdscript
+# scripts/autoloads/CrazySDK.gd
+extends Node
+
+func _ready() -> void:
+    if not _has_sdk():
+        return
+    var cg := get_node_or_null("/root/CrazyGames")
+    if cg:
+        await cg.is_initialised_async()
+    var settings = _game().get_game_settings() if _game() else null
+    if settings and settings.get("muteAudio", false):
+        AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), true)
+    gameplay_start()
+
+func gameplay_start() -> void:
+    var g := _game()
+    if g: g.gameplay_start()
+
+func gameplay_stop() -> void:
+    var g := _game()
+    if g: g.gameplay_stop()
+
+func request_midgame_ad() -> void:
+    if not OS.has_feature("web"):
+        return
+    var ad := _ad()
+    if not ad:
+        return
+    var bus := AudioServer.get_bus_index("Master")
+    AudioServer.set_bus_mute(bus, true)
+    await ad.request_ad_async("midgame")
+    AudioServer.set_bus_mute(bus, false)
+
+func request_rewarded_ad() -> bool:
+    if not OS.has_feature("web"):
+        return true
+    var ad := _ad()
+    if not ad:
+        return true
+    var bus := AudioServer.get_bus_index("Master")
+    AudioServer.set_bus_mute(bus, true)
+    var result = await ad.request_ad_async("rewarded")
+    AudioServer.set_bus_mute(bus, false)
+    if result is Dictionary:
+        return result.get("state", "") == "finished"
+    return false
+
+func _has_sdk() -> bool:
+    return get_node_or_null("/root/CrazyGames") != null
+
+func _game() -> Object:
+    var cg := get_node_or_null("/root/CrazyGames")
+    if cg and "Game" in cg: return cg.Game
+    return null
+
+func _ad() -> Object:
+    var cg := get_node_or_null("/root/CrazyGames")
+    if cg and "Ad" in cg: return cg.Ad
+    return null
+```
+
+Register in `project.godot`:
+```ini
+[autoload]
+CrazyGamesBridge="*res://addons/crazysdk-godot-4/Utils/CrazyGamesBridge.gd"
+CrazyGames="*res://addons/crazysdk-godot-4/CrazyGames.gd"
+CrazySDK="*res://scripts/autoloads/CrazySDK.gd"
+```
+
 Godot method namespace:
 - `CrazyGames.Game.*` — gameplay lifecycle, settings
 - `CrazyGames.Ad.*` — ads
@@ -90,11 +160,8 @@ On web, add a visible pause button to the HUD instead.
 Show at natural breaks only (game over, level transition). Never during active gameplay.
 
 ```gdscript
-# Caller must call gameplay_stop() first
-AudioManager.mute_all()
-await CrazyGames.Ad.request_ad_async("midgame")
-AudioManager.unmute_all()
-# Caller resumes gameplay_start() if appropriate
+# Via CrazySDK wrapper (handles muting + no-op when SDK absent):
+await CrazySDK.request_midgame_ad()
 ```
 
 Rules:
